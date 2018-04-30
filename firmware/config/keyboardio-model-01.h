@@ -23,8 +23,8 @@
 //#define DEBOUNCER "debounce-counter.h"
 //#define DEBOUNCER "debounce-none.h"
 //#define DEBOUNCER "debounce-split-counters-and-lockouts.h"
-//#define DEBOUNCER "debounce-split-counters.h"
-#define DEBOUNCER "debounce-state-machine.h"
+#define DEBOUNCER "debounce-split-counters.h"
+//#define DEBOUNCER "debounce-state-machine.h"
 
 
 // Should we be treating our columns as outputs or our rows?
