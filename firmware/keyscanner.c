@@ -38,10 +38,10 @@ void keyscanner_main(void) {
     // For each enabled row...
     for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
 
-	REINIT_INPUT_PINS;
+        REINIT_INPUT_PINS;
 
-	 // Toggle the output we want to check
-         ACTIVATE_OUTPUT_PIN(output_pin);
+        // Toggle the output we want to check
+        ACTIVATE_OUTPUT_PIN(output_pin);
 
         /* We need a no-op for synchronization. So says the datasheet
          * in Section 10.2.5 */
@@ -53,31 +53,31 @@ void keyscanner_main(void) {
         // Toggle the output we want to read back off
         DEACTIVATE_OUTPUT_PIN(output_pin);
 
-	CLEANUP_INPUT_PINS;
+        CLEANUP_INPUT_PINS;
 
         // Debounce key state
-        debounced_changes += debounce(KEYSCANNER_CANONICALIZE_PINS(pin_data) , db + output_pin);
+        debounced_changes += debounce(KEYSCANNER_CANONICALIZE_PINS(pin_data), db + output_pin);
 
     }
 
     // Most of the time there will be no new key events
     if (__builtin_expect(debounced_changes != 0, EXPECT_FALSE)) {
-    	RECORD_KEY_STATE;
+        RECORD_KEY_STATE;
     }
 }
 
 inline void keyscanner_record_state_rotate_ccw (void) {
     // The wire protocol expects data to be four rows of data, rather than 8 cols
     // of data. So we rotate it to match the original outputs
-     uint8_t scan_data_as_rows[COUNT_OUTPUT]={0};
-     for(int i=0; i<COUNT_OUTPUT; ++i){
-    	for(int j=0; j<COUNT_OUTPUT; ++j){
-      		scan_data_as_rows[i] = (  ( (db[j].state & (1 << (7-i) ) ) >> (7-i) ) << j ) | scan_data_as_rows[i];
-    	}
+    uint8_t scan_data_as_rows[COUNT_OUTPUT]= {0};
+    for(int i=0; i<COUNT_OUTPUT; ++i) {
+        for(int j=0; j<COUNT_OUTPUT; ++j) {
+            scan_data_as_rows[i] = (  ( (db[j].state & (1 << (7-i) ) ) >> (7-i) ) << j ) | scan_data_as_rows[i];
+        }
     }
 
     DISABLE_INTERRUPTS({
-	for(int i =7  ; i>= ( 8-KEY_REPORT_SIZE_BYTES); i--) {
+        for(int i =7  ; i>= ( 8-KEY_REPORT_SIZE_BYTES); i--) {
             ringbuf_append(scan_data_as_rows[i]);
         }
     });
@@ -89,10 +89,10 @@ inline void keyscanner_record_state (void) {
 
     // Snapshot the keystate to add to the ring buffer
     // Run this with interrupts off to make sure that
-    // when we read from the ringbuffer, we always get 
+    // when we read from the ringbuffer, we always get
     // four bytes representing a single keyboard state.
     DISABLE_INTERRUPTS({
-	for(int i =0 ; i< KEY_REPORT_SIZE_BYTES; i++) {
+        for(int i =0 ; i< KEY_REPORT_SIZE_BYTES; i++) {
             ringbuf_append(db[i].state);
         }
     });
