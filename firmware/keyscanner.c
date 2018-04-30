@@ -17,6 +17,7 @@ volatile uint8_t g_input_changed = 0;
 volatile uint8_t g_last_input = ~0;
 uint8_t g_seen_sample_change = 0;
 
+static uint8_t g_saved_input_rows[4] = { ~0, ~0, ~0, ~0 };
 static uint8_t g_reading_row = 0;
 
 void keyscanner_init(void) {
@@ -70,22 +71,25 @@ void keyscanner_main(void) {
 
     uint8_t     read_input = PIN_INPUT;
     uint8_t     read_row = g_reading_row;
+    uint8_t     next_row = (read_row + 1) % 4;
+    uint8_t     next_last_input = g_saved_input_rows[next_row];
+    g_reading_row = next_row;
+    g_saved_input_rows[read_row] = read_input;
 
     PCICR &= ~_BV(PCIE2); // disable PCINT2 input interrupt
     {
-        // switch to next output row
-        PORT_OUTPUT |= _BV(g_reading_row);
-        g_reading_row = (g_reading_row + 1) % 4;
-        PORT_OUTPUT &= ~_BV(g_reading_row);
+        g_last_input = next_last_input;
+        g_input_changed = 0;
 
-        // wait to make sure we don't catch "output-row-change-induced bounces"
-        // in the interrupt
-        _delay_loop_1(5);
+        // switch to next output row
+        PORT_OUTPUT |= _BV(read_row);
+        PORT_OUTPUT &= ~_BV(next_row);
+
+        // don't do anything here
+        // we try to re-enable PCINT2 asap to catch bouncing
+        //asm volatile("nop\n\t");
     }
     PCICR |= _BV(PCIE2); // re-enable PCINT2 input interrupt
-
-    g_last_input = PIN_INPUT;
-    g_input_changed = 0;
 
     uint8_t     debounced_changes = 0;
     debounced_changes |= debounce(KEYSCANNER_CANONICALIZE_PINS(read_input), db + read_row);
