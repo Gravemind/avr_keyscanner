@@ -32,15 +32,15 @@
 #define ACTIVATE_OUTPUT_PIN(output_pin) HIGH(PORT_OUTPUT, output_pin);
 #define DEACTIVATE_OUTPUT_PIN(output_pin) LOW(PORT_OUTPUT, output_pin);
 
-	// The rows are inputs, set them back to input mode so we can read them 
-	// on the next go round. By default, pullups are off, which is good because we want them off.
+// The rows are inputs, set them back to input mode so we can read them
+// on the next go round. By default, pullups are off, which is good because we want them off.
 #define REINIT_INPUT_PINS PINS_LOW(DDR_INPUT, MASK_INPUT);
 
 
-	// We don't have pull-down pins. Because of this, current can pretty easily leak across 
-	// an entire column after a scan.
-	// To pull the pins down, we flip them to outputs. By default, an output pin is driven low
-	// so we don't need to explicitly drive it low.
+// We don't have pull-down pins. Because of this, current can pretty easily leak across
+// an entire column after a scan.
+// To pull the pins down, we flip them to outputs. By default, an output pin is driven low
+// so we don't need to explicitly drive it low.
 #define CLEANUP_INPUT_PINS PINS_HIGH(DDR_INPUT, MASK_INPUT);
 
 #define RECORD_KEY_STATE keyscanner_record_state_rotate_ccw();
@@ -97,7 +97,7 @@
 // Active pins are high. So this macro is a no-op
 #define KEYSCANNER_CANONICALIZE_PINS(pins) pins
 
-#else 
+#else
 
 // Active pins on are low. So the debouncer inverts them before working with them
 #define KEYSCANNER_CANONICALIZE_PINS(pins) ~pins
@@ -114,6 +114,3 @@ void keyscanner_record_state(void);
 void keyscanner_record_state_rotate_ccw(void);
 void keyscanner_ringbuf_update(uint8_t row1, uint8_t row2, uint8_t row3, uint8_t row4);
 void keyscanner_timer1_init(void);
-
-
-
