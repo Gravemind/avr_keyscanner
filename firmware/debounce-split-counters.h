@@ -67,8 +67,8 @@
  */
 
 
-#define DEBOUNCE_PRESS_DELAY_COUNT 2
-#define DEBOUNCE_RELEASE_DELAY_COUNT 50
+#define DEBOUNCE_PRESS_DELAY_COUNT 15
+#define DEBOUNCE_RELEASE_DELAY_COUNT 15
 
 /*
  * like the original debounce-counter, counters are transposed:
@@ -152,6 +152,9 @@ uint8_t debounce(uint8_t sample, debounce_t *debouncer) {
         // if state changed during last debounce call, then force state_changed
         // to 0 this time, so the counter has a chance to be reset.
         state_changed &= ~debouncer->last_changes;
+
+    // reset counter if a sample may have change
+    state_changed &= ~g_a_sample_may_have_changed;
 
     // foreach bit in counter_bits
     for(uint8_t i=0; i<NUM_COUNTER_BITS; i++)
