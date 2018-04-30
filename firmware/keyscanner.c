@@ -12,6 +12,7 @@ debounce_t db[COUNT_OUTPUT];
 // do_scan gets set any time we should actually do a scan
 volatile uint8_t do_scan = 1;
 
+uint8_t g_sample_unstable = 0;
 
 void keyscanner_set_interval(uint8_t interval) {
     OCR1A = interval;
@@ -32,16 +33,15 @@ void keyscanner_init(void) {
     keyscanner_timer1_init();
 }
 
-
+//__attribute__((noinline))
 void keyscanner_main(void) {
-    uint8_t debounced_changes = 0;
-    uint8_t pin_data;
-
     if (__builtin_expect(do_scan == 0, EXPECT_TRUE)) {
         return;
     }
-
     do_scan = 0;
+
+    uint8_t debounced_changes = 0;
+    uint8_t pin_data;
 
     // For each enabled row...
     for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
@@ -57,6 +57,10 @@ void keyscanner_main(void) {
 
         // Read pin data
         pin_data = PIN_INPUT;
+        uint8_t unstable = 0;
+        for (uint8_t i = 0; i < 10; ++i)
+            unstable |= pin_data ^ PIN_INPUT;
+        g_sample_unstable = unstable;
 
         // Toggle the output we want to read back off
         DEACTIVATE_OUTPUT_PIN(output_pin);
@@ -64,7 +68,7 @@ void keyscanner_main(void) {
         CLEANUP_INPUT_PINS;
 
         // Debounce key state
-        debounced_changes += debounce(KEYSCANNER_CANONICALIZE_PINS(pin_data), db + output_pin);
+        debounced_changes |= debounce(KEYSCANNER_CANONICALIZE_PINS(pin_data), db + output_pin);
 
     }
 

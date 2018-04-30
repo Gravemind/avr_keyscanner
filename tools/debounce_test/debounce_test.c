@@ -29,6 +29,7 @@ uint16_t release_duration[1024] = {0};
 uint16_t press_latency_counts[1024] = {0};
 uint16_t release_latency_counts[1024] = {0};
 
+uint8_t g_sample_unstable = 0;
 
 #define BUFFERSIZE 81920
 void get_input () {

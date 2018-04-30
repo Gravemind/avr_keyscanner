@@ -118,4 +118,4 @@ void keyscanner_timer1_init(void);
 void keyscanner_set_interval(uint8_t interval);
 uint8_t keyscanner_get_interval();
 
-
+extern uint8_t     g_sample_unstable;
