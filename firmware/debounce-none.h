@@ -11,7 +11,6 @@ typedef struct {
 static uint8_t debounce(uint8_t sample, debounce_t *debouncer) {
 
     uint8_t changes = sample ^ debouncer->state;
-    if (changes)
-        debouncer->state = sample;
+    debouncer->state = sample;
     return changes;
 }
