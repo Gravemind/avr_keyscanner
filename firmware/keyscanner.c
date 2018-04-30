@@ -13,15 +13,20 @@ debounce_t db[COUNT_OUTPUT];
 volatile uint8_t do_scan = 1;
 
 volatile uint8_t g_input_changed = 0;
+
 volatile uint8_t g_last_input = ~0;
-uint8_t g_a_sample_may_have_changed = 0;
+uint8_t g_seen_sample_change = 0;
+
+static uint8_t g_reading_row = 0;
 
 void keyscanner_init(void) {
     CONFIGURE_OUTPUT_PINS;
 
     CONFIGURE_INPUT_PINS;
 
-    PORT_OUTPUT &= ~MASK_OUTPUT;
+    PORT_OUTPUT |= MASK_OUTPUT;
+    PORT_OUTPUT &= ~_BV(g_reading_row);
+    asm volatile("nop\n\t");
     PCICR |= _BV(PCIE2);
     PCMSK2 |= MASK_INPUT;
 
@@ -31,114 +36,59 @@ void keyscanner_init(void) {
     keyscanner_timer1_init();
 }
 
+//__attribute__ ((noinline))
 void keyscanner_main(void) {
     if (__builtin_expect(do_scan == 0, EXPECT_TRUE)) {
         return;
     }
     do_scan = 0;
 
-    g_a_sample_may_have_changed = g_input_changed;
+    // -- test, WIP --
+    //
+    // scans only one output row per keyscanner_main (so every KEYSCAN_INTERVAL)
+    // (so debouncer delays are x4)
+    //
+    // goals:
+    //
+    // - wait for a full KEYSCAN_INTERVAL for the "lit up" output row to
+    //   stabilize before reading the input (the thought is that it might help
+    //   the switch to make contact)
+    //
+    // - the interrupt watch a single output row for an entire KEYSCAN_INTERVAL
+    //   every 4 KEYSCAN_INTERVAL (so caught pin changes correspond to a single
+    //   key, and not an entire column)
+    //
+    // currently only debouncer counter and split-counters uses interrupt data
+    // (g_seen_sample_change)
+    //
+    // press and release delay/latency range, with debouncer-counter and
+    // - KEYSCAN_INTERVAL=14 -> 5.4 to 7.1 ms.
+    // - KEYSCAN_INTERVAL=20 -> 7.8 to 10.25 ms.
+    //
 
-// enable to read all inputs at once, then run the debounce code.
-// makes PCINT2 input interrupt disabled for a shorter duration.
-#define FAST_READ_INPUT 1
+    g_seen_sample_change = g_input_changed;
 
-#if (FAST_READ_INPUT != 0)
-    uint8_t     pins_data[COUNT_OUTPUT];
-#endif
+    uint8_t     read_input = PIN_INPUT;
+    uint8_t     read_row = g_reading_row;
+
+    PCICR &= ~_BV(PCIE2); // disable PCINT2 input interrupt
+    {
+        // switch to next output row
+        PORT_OUTPUT |= _BV(g_reading_row);
+        g_reading_row = (g_reading_row + 1) % 4;
+        PORT_OUTPUT &= ~_BV(g_reading_row);
+
+        // wait to make sure we don't catch "output-row-change-induced bounces"
+        // in the interrupt
+        _delay_loop_1(5);
+    }
+    PCICR |= _BV(PCIE2); // re-enable PCINT2 input interrupt
+
+    g_last_input = PIN_INPUT;
+    g_input_changed = 0;
 
     uint8_t     debounced_changes = 0;
-
-    PCICR &= ~_BV(PCIE2); // disable PCINT2 input interupt
-    {
-#if (FAST_READ_INPUT != 0)
-
-        // test, WIP, hard-coded for !COLS_ARE_OUTPUTS, and MASK_OUTPUT = 0b00001111
-
-        // wait_stable=1 makes inter-row chatter !?
-        // @8MHz, 1 cycles "nop" should be enough to get a stable reading !? (but it doesn't)
-        const uint8_t wait_stable = 10; // *3 cycles, or *0.375 micro seconds (@8MHz)
-
-        PORT_OUTPUT |= _BV(1);
-        PORT_OUTPUT |= _BV(2);
-        PORT_OUTPUT |= _BV(3);
-
-        _delay_loop_1(wait_stable);
-
-        pins_data[0] = PIN_INPUT;
-
-        PORT_OUTPUT |= _BV(0);
-        PORT_OUTPUT &= ~_BV(1);
-
-        _delay_loop_1(wait_stable);
-
-        pins_data[1] = PIN_INPUT;
-        PORT_OUTPUT |= _BV(1);
-        PORT_OUTPUT &= ~_BV(2);
-
-        _delay_loop_1(wait_stable);
-
-        pins_data[2] = PIN_INPUT;
-        PORT_OUTPUT |= _BV(2);
-        PORT_OUTPUT &= ~_BV(3);
-
-        _delay_loop_1(wait_stable);
-
-        pins_data[3] = PIN_INPUT;
-        PORT_OUTPUT &= ~_BV(0);
-        PORT_OUTPUT &= ~_BV(1);
-        PORT_OUTPUT &= ~_BV(2);
-
-        _delay_loop_1(wait_stable);
-
-        g_last_input = PIN_INPUT;
-        g_input_changed = 0;
-
-#else
-        PORT_OUTPUT |= MASK_OUTPUT;
-        asm volatile("nop\n\t");
-
-        uint8_t     pin_data;
-        // For each enabled row...
-        for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
-
-            REINIT_INPUT_PINS;
-
-            // Toggle the output we want to check
-            ACTIVATE_OUTPUT_PIN(output_pin);
-
-            /* We need a no-op for synchronization. So says the datasheet
-             * in Section 10.2.5 */
-            asm volatile("nop\n\t");
-
-            // Read pin data
-            pin_data = PIN_INPUT;
-
-            // Toggle the output we want to read back off
-            DEACTIVATE_OUTPUT_PIN(output_pin);
-
-            CLEANUP_INPUT_PINS;
-
-            // Debounce key state
-            debounced_changes |= debounce(KEYSCANNER_CANONICALIZE_PINS(pin_data), db + output_pin);
-
-        }
-
-        PORT_OUTPUT &= ~MASK_OUTPUT;
-        asm volatile("nop\n\t");
-        asm volatile("nop\n\t");
-        g_last_input = PIN_INPUT;
-        g_input_changed = 0;
-#endif
-    }
-    PCICR |= _BV(PCIE2); // re-enable PCINT2 input interupt
-
-#if (FAST_READ_INPUT != 0)
-    for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
-        // Debounce key state
-        debounced_changes |= debounce(KEYSCANNER_CANONICALIZE_PINS(pins_data[output_pin]), db + output_pin);
-    }
-#endif
+    debounced_changes |= debounce(KEYSCANNER_CANONICALIZE_PINS(read_input), db + read_row);
 
     // Most of the time there will be no new key events
     if (__builtin_expect(debounced_changes != 0, EXPECT_FALSE)) {

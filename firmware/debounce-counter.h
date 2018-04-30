@@ -51,6 +51,8 @@ static inline uint8_t debounce(uint8_t sample, debounce_t *debouncer) {
     // if a key has changed, it's bit will be 1, otherwise 0
     delta = sample ^ debouncer->state;
 
+    delta &= ~g_seen_sample_change;
+
     // Increment counters and reset any unchanged bits:
     // increment bit 1 for all changed keys
     debouncer->db1 = ((debouncer->db1) ^ (debouncer->db0)) & delta;
@@ -60,7 +62,7 @@ static inline uint8_t debounce(uint8_t sample, debounce_t *debouncer) {
     // Calculate returned change set: if delta is still true
     // and the counter has wrapped back to 0, the key is changed.
 
-    changes = ~(~delta | (debouncer->db0) | (debouncer->db1));
+    changes = delta & ~debouncer->db0 & ~debouncer->db1;
     // Update state: in this case use xor to flip any bit that is true in changes.
     debouncer->state ^= changes;
 
