@@ -51,7 +51,10 @@ static inline uint8_t debounce(uint8_t sample, debounce_t *debouncer) {
     // if a key has changed, it's bit will be 1, otherwise 0
     delta = sample ^ debouncer->state;
 
-    delta &= ~g_seen_sample_change;
+    uint8_t     bounced = 0;
+    bounced |= sample & g_seen_sample_fell;
+    bounced |= ~sample & g_seen_sample_rose;
+    delta &= ~bounced;
 
     // Increment counters and reset any unchanged bits:
     // increment bit 1 for all changed keys

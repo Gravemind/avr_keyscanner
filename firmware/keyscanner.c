@@ -9,13 +9,15 @@
 
 debounce_t db[COUNT_OUTPUT];
 
+uint8_t     g_seen_sample_rose = 0;
+uint8_t     g_seen_sample_fell = 0;
+
 // do_scan gets set any time we should actually do a scan
 volatile uint8_t do_scan = 1;
 
-volatile uint8_t g_input_changed = 0;
-
+volatile uint8_t g_input_rose = 0;
+volatile uint8_t g_input_fell = 0;
 volatile uint8_t g_last_input = ~0;
-uint8_t g_seen_sample_change = 0;
 
 static uint8_t g_saved_input_rows[4] = { ~0, ~0, ~0, ~0 };
 static uint8_t g_reading_row = 0;
@@ -67,8 +69,6 @@ void keyscanner_main(void) {
     // - KEYSCAN_INTERVAL=20 -> 7.8 to 10.25 ms.
     //
 
-    g_seen_sample_change = g_input_changed;
-
     uint8_t     read_input = PIN_INPUT;
     uint8_t     read_row = g_reading_row;
     uint8_t     next_row = (read_row + 1) % 4;
@@ -78,8 +78,11 @@ void keyscanner_main(void) {
 
     PCICR &= ~_BV(PCIE2); // disable PCINT2 input interrupt
     {
+        g_seen_sample_rose = g_input_fell; // sample = ~input, see KEYSCANNER_CANONICALIZE_PINS
+        g_seen_sample_fell = g_input_rose; // sample = ~input, see KEYSCANNER_CANONICALIZE_PINS
         g_last_input = next_last_input;
-        g_input_changed = 0;
+        g_input_fell = 0;
+        g_input_rose = 0;
 
         // switch to next output row
         PORT_OUTPUT |= _BV(read_row);
@@ -160,7 +163,8 @@ ISR(TIMER1_COMPA_vect) {
 // interrupt for pin change for pins 16 to 23
 ISR(PCINT2_vect) {
     uint8_t input = PIN_INPUT;
-    uint8_t input_changed = g_last_input ^ input;
-    g_input_changed |= input_changed;
+    uint8_t last_input = g_last_input;
     g_last_input = input;
+    g_input_rose |= ~last_input & input;
+    g_input_fell |= last_input & ~input;
 }

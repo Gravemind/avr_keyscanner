@@ -115,4 +115,5 @@ void keyscanner_record_state_rotate_ccw(void);
 void keyscanner_ringbuf_update(uint8_t row1, uint8_t row2, uint8_t row3, uint8_t row4);
 void keyscanner_timer1_init(void);
 
-extern uint8_t     g_seen_sample_change;
+extern uint8_t     g_seen_sample_rose;
+extern uint8_t     g_seen_sample_fell;

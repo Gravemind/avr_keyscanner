@@ -152,8 +152,10 @@ uint8_t debounce(uint8_t sample, debounce_t *debouncer) {
         // to 0 this time, so the counter has a chance to be reset.
         state_changed &= ~debouncer->last_changes;
 
-    // reset counter if a sample may have change
-    state_changed &= ~g_seen_sample_change;
+    uint8_t     bounced = 0;
+    bounced |= sample & g_seen_sample_fell;
+    bounced |= ~sample & g_seen_sample_rose;
+    state_changed &= ~bounced;
 
     // foreach bit in counter_bits
     for(int8_t i=0; i<NUM_COUNTER_BITS; i++)
