@@ -40,38 +40,52 @@ void keyscanner_main(void) {
     }
     do_scan = 0;
 
-    uint8_t debounced_changes = 0;
-    uint8_t pin_data;
+    uint8_t pins_data[COUNT_OUTPUT];
+    uint8_t pins_unstable[COUNT_OUTPUT] = {0};
 
-    // For each enabled row...
-    for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
+    // Sample matrix
 
-        REINIT_INPUT_PINS;
+    // How many full scans in a row to catch instability
+    const uint8_t   stability_test_output_loops = 3;
+    // How many raw input sampling in a row to catch instability
+    const uint8_t   stability_test_input_loops = 5;
+    for (uint8_t stability_output_loop = 0; stability_output_loop < stability_test_output_loops; ++stability_output_loop)
+    {
+        // For each enabled row...
+        for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
 
-        // Toggle the output we want to check
-        ACTIVATE_OUTPUT_PIN(output_pin);
+            REINIT_INPUT_PINS;
 
-        /* We need a no-op for synchronization. So says the datasheet
-         * in Section 10.2.5 */
-        asm volatile("nop\n\t");
+            // Toggle the output we want to check
+            ACTIVATE_OUTPUT_PIN(output_pin);
+            asm volatile("nop\n\t");
 
-        // Read pin data
-        pin_data = PIN_INPUT;
-        uint8_t unstable = 0;
-        for (uint8_t i = 0; i < 10; ++i)
-            unstable |= pin_data ^ PIN_INPUT;
-        g_sample_unstable = unstable;
+            // Read pin data
+            if (stability_output_loop == 0)
+                pins_data[output_pin] = PIN_INPUT;
 
-        // Toggle the output we want to read back off
-        DEACTIVATE_OUTPUT_PIN(output_pin);
+            for (uint8_t stability_input_loop = 0; stability_input_loop < stability_test_input_loops; ++stability_input_loop)
+                pins_unstable[output_pin] |= PIN_INPUT ^ pins_data[output_pin];
 
-        CLEANUP_INPUT_PINS;
+            // Toggle the output we want to read back off
+            DEACTIVATE_OUTPUT_PIN(output_pin);
+            asm volatile("nop\n\t");
 
-        // Debounce key state
-        debounced_changes |= debounce(KEYSCANNER_CANONICALIZE_PINS(pin_data), db + output_pin);
-
+            CLEANUP_INPUT_PINS;
+        }
     }
 
+    // Run debouncer
+
+    uint8_t debounced_changes = 0;
+    for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
+        uint8_t     sample = KEYSCANNER_CANONICALIZE_PINS(pins_data[output_pin]);
+        g_sample_unstable = pins_unstable[output_pin];
+        // Debounce key state
+        debounced_changes |= debounce(sample, db + output_pin);
+    }
+
+    // Send data
     // Most of the time there will be no new key events
     if (__builtin_expect(debounced_changes != 0, EXPECT_FALSE)) {
         RECORD_KEY_STATE;
