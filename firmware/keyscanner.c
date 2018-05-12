@@ -7,6 +7,8 @@
 #include "ringbuf.h"
 #include "keyscanner.h"
 
+#include "led-spiout.h"
+
 debounce_t db[COUNT_OUTPUT];
 
 // do_scan gets set any time we should actually do a scan
@@ -83,6 +85,50 @@ void keyscanner_main(void) {
         g_sample_unstable = pins_unstable[output_pin];
         // Debounce key state
         debounced_changes |= debounce(sample, db + output_pin);
+
+#if 0
+        // Debug stuff by fade-in/out key's LED
+        // ! overridden anytime a "true" LED update is received
+        // ! e.g. broken during boot breath LED animation
+
+        const uint8_t   fade_in_step = 20;
+        const uint8_t   fade_out_step = 1;
+        const uint8_t   colcpnt = 1; // green
+
+        // fades-in each time pins is detected unstable
+        // and fades-out when not
+        uint8_t     litup = pins_unstable[output_pin];
+        //uint8_t     litup = sample ^ db[output_pin].state;
+        //uint8_t     litup = sample;
+        //uint8_t     litup = db[output_pin].state;
+
+        // @FIXME: this is the left-hand, right-hand key_led_map is slightly different !
+        static const uint8_t key_led_map[4][16] = {
+            {3, 4, 11, 12, 19, 20, 26, 27},
+            {2, 5, 10, 13, 18, 21, 25, 28},
+            {1, 6, 9, 14, 17, 22, 24, 29},
+            {0, 7, 8, 15, 16, 23, 31, 30},
+        };
+        for (uint8_t i = 0; i < 8; ++i)
+        {
+            uint8_t     k = key_led_map[output_pin][7 - i];
+            uint8_t     rgb[] = {0, 0, 0};
+            led_get_one(k, rgb);
+            if (litup & _BV(i))
+            {
+                rgb[colcpnt] = rgb[colcpnt] < 255 - fade_in_step ? rgb[colcpnt] + fade_in_step : 255;
+                led_set_one_to(k, rgb);
+            }
+            else
+            {
+                if (rgb[colcpnt] > 0)
+                {
+                    rgb[colcpnt] = rgb[colcpnt] > fade_out_step ? rgb[colcpnt] - fade_out_step : 0;
+                    led_set_one_to(k, rgb);
+                }
+            }
+        }
+#endif
     }
 
     // Send data
