@@ -109,6 +109,12 @@ void led_set_one_to(uint8_t led, uint8_t *buf) {
 
 }
 
+void led_get_one(uint8_t led, uint8_t *buf) {
+    DISABLE_INTERRUPTS({
+        memcpy(buf, (uint8_t *)led_buffer.each[led], LED_DATA_SIZE);
+    });
+}
+
 void led_set_global_brightness(uint8_t brightness) {
     // Legal brightness inputs are 0 to 31.
     // But the output we want has the 3 high bytes set anyway

@@ -31,6 +31,9 @@ void led_update_all(uint8_t *buf);
 /* Call this when you want to set only a single LED */
 void led_set_one_to(uint8_t led, uint8_t * led_data);
 
+/* Call this when you want to get only a single LED */
+void led_get_one(uint8_t led, uint8_t * led_data);
+
 /* Call this when you want to set every LED to the same value */
 void led_set_all_to(uint8_t * led_data);
 
