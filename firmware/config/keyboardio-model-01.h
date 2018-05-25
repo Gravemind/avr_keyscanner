@@ -21,6 +21,7 @@
 
 //#define DEBOUNCER "debounce-integrator.h"
 //#define DEBOUNCER "debounce-counter.h"
+//#define DEBOUNCER "debounce-counter-detect.h"
 //#define DEBOUNCER "debounce-none.h"
 //#define DEBOUNCER "debounce-split-counters-and-lockouts.h"
 //#define DEBOUNCER "debounce-split-counters.h"
