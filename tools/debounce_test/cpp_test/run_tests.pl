@@ -47,7 +47,7 @@ for my $debouncer (@debouncers) {
 
     print STDERR "Running ", $debouncer, "...\n";
 
-    open2( \*CHLD_OUT, \*CHLD_IN, $debouncer . " " . $args )
+    my $pid = open2( \*CHLD_OUT, \*CHLD_IN, $debouncer . " " . $args )
       or die "open2() failed $!";
     close(CHLD_IN);
 
@@ -66,6 +66,12 @@ for my $debouncer (@debouncers) {
     }
 
     close(CHLD_OUT);
+
+    waitpid( $pid, 0 );
+    my $child_exit_status = $?;
+    if ( $child_exit_status != 0 ) {
+        print STDERR "\nFAIL: ", $debouncer, " exited with failure ", $child_exit_status, " !\n\n";
+    }
 }
 
 my $html_head = <<'END_MESSAGE';
