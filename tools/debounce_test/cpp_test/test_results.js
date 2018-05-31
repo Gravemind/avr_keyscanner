@@ -54,7 +54,8 @@ function refresh() {
 $(document).ready(function() {
     table = $('#table').DataTable({
         "paging": false,
-        "order": [[ 0, 'asc' ]]
+        "order": [[ 0, 'asc' ]],
+        "autoWidth": false,
     });
 
     $('input.toggle-vis').on('click', refresh);
