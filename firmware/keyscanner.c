@@ -7,11 +7,12 @@
 #include "wire-protocol.h"
 #include "ringbuf.h"
 #include "keyscanner.h"
+#include "led-spiout.h"
 
 debounce_t db[COUNT_OUTPUT];
 
-// do_scan gets set any time we should actually do a scan
-volatile uint8_t do_scan = 1;
+// do_scan_counter gets set any time we should actually do a scan
+static volatile uint8_t do_scan_counter = 1;
 
 
 void keyscanner_set_interval(uint8_t interval) {
@@ -38,11 +39,15 @@ void keyscanner_main(void) {
     uint8_t debounced_changes = 0;
     uint8_t pin_data;
 
-    if (__builtin_expect(do_scan == 0, EXPECT_TRUE)) {
+    uint8_t last_scan_counter = do_scan_counter;
+    if (__builtin_expect(last_scan_counter == 0, EXPECT_TRUE)) {
         return;
     }
+    do_scan_counter = 0;
 
-    do_scan = 0;
+#ifdef ENABLE_LED_DEBUG
+    led_debug_value(last_scan_counter);
+#endif
 
     // For each enabled row...
     for (uint8_t output_pin = 0; output_pin < COUNT_OUTPUT; ++output_pin) {
@@ -105,5 +110,5 @@ void keyscanner_timer1_init(void) {
 
 // interrupt service routine (ISR) for timer 1 A compare match
 ISR(TIMER1_COMPA_vect) {
-    do_scan = 1; // Yes! Let's do a scan
+    ++do_scan_counter; // Yes! Let's do a scan
 }

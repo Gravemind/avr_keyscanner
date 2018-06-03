@@ -10,6 +10,18 @@
 #define LED_BUFSZ (LED_DATA_SIZE *NUM_LEDS)
 #define LED_BANK_SIZE (LED_DATA_SIZE*NUM_LEDS_PER_BANK)
 
+//#define ENABLE_LED_DEBUG
+
+#ifdef ENABLE_LED_DEBUG
+/*
+  Debugs a value by lighting up a corresponding key:
+  value=0 lit [prog]
+  value=5 lit [5]
+  value=8 lit [W]
+  up to value>=23 lit [B]
+*/
+void led_debug_value(uint8_t value);
+#endif
 
 /* Call to begin transmitting LED data */
 void led_init(void);

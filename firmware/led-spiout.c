@@ -68,6 +68,34 @@ void led_data_ready() {
     ENABLE_LED_WRITES;
 }
 
+#ifdef ENABLE_LED_DEBUG
+static  uint8_t led_debug_value_led_index = 255;
+void led_debug_value(uint8_t value)
+{
+    // @FIXME works only for left hand
+    static const uint8_t key_led_map[] = {
+        3, 4, 11, 12, 19, 20, //26, 27,
+        2, 5, 10, 13, 18, 21, //25, 28,
+        1, 6, 9, 14, 17, 22, //24, 29,
+        0, 7, 8, 15, 16, 23, //31, 30,
+    };
+    uint8_t i = key_led_map[ value < sizeof(key_led_map) ? value : (sizeof(key_led_map) - 1) ] * 3;
+    /* static const uint8_t key_led_map[] = { */
+    /*     9, 12, 33, 36, 57, 60, //78, 81, */
+    /*     6, 15, 30, 39, 54, 63, //75, 84, */
+    /*     3, 18, 27, 42, 51, 66, //72, 87, */
+    /*     0, 21, 24, 45, 48, 69, //93, 90, */
+    /* }; */
+    /* uint8_t i = key_led_map[ value ]; // will read garbage if higher. */
+    uint8_t color_bgr_comp = 2/*red*/;
+    i += color_bgr_comp;
+    if (led_debug_value_led_index != i) {
+        led_debug_value_led_index = i;
+        led_data_ready();
+    }
+}
+#endif
+
 /* Update the transmit buffer with LED_BUFSZ bytes of new data */
 void led_update_bank(uint8_t *buf, const uint8_t bank) {
     /* Double-buffering here is wasteful, but there isn't enough RAM on
@@ -271,7 +299,13 @@ ISR(SPI_STC_vect) {
         if (++subpixel == 1) {
             SPDR = global_brightness;
         } else {
-            SPDR = led_buffer.whole[index++];
+#ifdef ENABLE_LED_DEBUG
+            if (index == led_debug_value_led_index)
+                SPDR = 255;
+            else
+#endif
+                SPDR = led_buffer.whole[index];
+            ++index;
             subpixel %= 4; // reset the subpixel once it goes past brightness,r,g,b
         }
 
